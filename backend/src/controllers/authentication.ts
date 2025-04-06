@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import User from '../models/User';
 
 // Mock users database (in a real app, use a database)
 const users = [
@@ -90,34 +91,19 @@ export const login = async (req: Request, res: Response) => {
 // Get user profile
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    // Get token from authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
+    // User is already attached to req by the authMiddleware
+    const userId = req.user?.userId;
     
-    const token = authHeader.split(' ')[1];
+    // Find user in database
+    const user = await User.findById(userId).select('-password');
     
-    // Verify token
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'your_jwt_secret'
-    ) as { userId: string; email: string };
-    
-    // Find user
-    const user = users.find(user => user.id === decoded.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Return user profile
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email
-    });
+    res.json(user);
   } catch (error) {
     console.error('Profile error:', error);
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
