@@ -1,17 +1,13 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-// For a real application, you would use bcrypt to hash passwords
-// import bcrypt from 'bcrypt'; 
 
-// This is a simple in-memory user store for demo purposes
-// In a real app, you would use a database
+// Mock users database (in a real app, use a database)
 const users = [
   {
     id: '1',
     name: 'Demo User',
     email: 'demo@example.com',
-    // In a real app, this would be a hashed password
-    password: 'password123'
+    password: 'password123' // In a real app, this would be hashed
   }
 ];
 
@@ -20,32 +16,28 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
     
-    // Check if required fields are provided
+    // Validation
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'All fields are required' });
     }
     
-    // Check if user already exists
+    // Check if user exists
     const existingUser = users.find(user => user.email === email);
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with that email' });
+      return res.status(400).json({ message: 'Email already registered' });
     }
-    
-    // In a real app, you would hash the password before storing
-    // const hashedPassword = await bcrypt.hash(password, 10);
     
     // Create new user
     const newUser = {
-      id: String(users.length + 1),
+      id: (users.length + 1).toString(),
       name,
       email,
-      password // In a real app, use hashedPassword
+      password // In a real app, hash this password
     };
     
-    // Add to users array (in a real app, save to database)
     users.push(newUser);
     
-    res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({ message: 'Registration successful' });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
@@ -57,7 +49,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     
-    // Check if required fields are provided
+    // Validation
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -68,18 +60,15 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
-    // In a real app, you would compare hashed password
-    // const passwordMatch = await bcrypt.compare(password, user.password);
-    const passwordMatch = password === user.password; // Simplified for demo
-    
-    if (!passwordMatch) {
+    // Verify password (in a real app, compare hashed passwords)
+    if (user.password !== password) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'your_jwt_secret', // Use env variable in production
+      process.env.JWT_SECRET || 'your_jwt_secret',
       { expiresIn: '1h' }
     );
     
@@ -98,24 +87,30 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// Get current user profile
+// Get user profile
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    // In a real app, user would be added to req by the auth middleware
-    // For demo purposes, we'll extract from token manually
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
+    // Get token from authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret') as { userId: string };
-    const user = users.find(u => u.id === decoded.userId);
+    const token = authHeader.split(' ')[1];
     
+    // Verify token
+    const decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'your_jwt_secret'
+    ) as { userId: string; email: string };
+    
+    // Find user
+    const user = users.find(user => user.id === decoded.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
+    // Return user profile
     res.json({
       id: user.id,
       name: user.name,
@@ -123,6 +118,6 @@ export const getProfile = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Profile error:', error);
-    res.status(500).json({ message: 'Server error fetching profile' });
+    res.status(401).json({ message: 'Invalid token' });
   }
 };
