@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Extending Express Request type to include the user
 declare global {
@@ -8,33 +12,34 @@ declare global {
       user?: {
         userId: string;
         email: string;
-      }
+      };
     }
   }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: string;
+    email: string;
+  };
+}
+
+export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ message: 'Unauthorized: No token provided' });
+    return;
+  }
+
+  const token = authHeader.split(' ')[1];
+
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Verify token
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'your_jwt_secret'
-    ) as { userId: string; email: string };
-    
-    // Add user from payload to request
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string; email: string };
+    req.user = { userId: decoded.userId, email: decoded.email };
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(401).json({ message: 'Authentication failed' });
+    console.error('Token verification error:', error);
+    res.status(401).json({ message: 'Unauthorized: Invalid token' });
   }
 };
