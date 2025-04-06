@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+
 import Link from 'next/link';
 
 export default function Register() {
@@ -51,15 +51,6 @@ export default function Register() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <div className="flex justify-center mb-8">
-          <Image
-            src="/next.svg"
-            alt="Notes App Logo"
-            width={120}
-            height={30}
-            className="dark:invert"
-          />
-        </div>
         
         <h1 className="text-2xl font-bold text-center mb-6">Create an Account</h1>
         
