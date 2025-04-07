@@ -1,8 +1,17 @@
-// In your main server file (e.g., app.ts or index.ts)
 import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 
+// Load environment variables
+dotenv.config();
+
 const app = express();
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI as string)
+  .then(() => console.log('Connected to MongoDB successfully'))
+  .catch((error) => console.error('MongoDB connection error:', error));
 
 // Middleware
 app.use(express.json());
