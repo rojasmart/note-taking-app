@@ -20,7 +20,7 @@ export default function NotesHomepage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [activeView, setActiveView] = useState<'notes' | 'settings'>('notes');
   const router = useRouter();
 
   useEffect(() => {
@@ -93,6 +93,7 @@ export default function NotesHomepage() {
       const createdNote = await response.json();
       setNotes([createdNote, ...notes]);
       setSelectedNote(createdNote);
+      setActiveView('notes');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while creating a note');
     }
@@ -246,128 +247,285 @@ export default function NotesHomepage() {
 
             <div className="relative ml-4">
               <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none"
+                onClick={() => setActiveView(activeView === 'notes' ? 'settings' : 'notes')}
+                className={`w-10 h-10 rounded-full ${activeView === 'settings' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </button>
-
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-20 border border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Notes list */}
-          <div className="w-72 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <button
-                onClick={createNewNote}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                + New Note
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1">
-              {filteredNotes.length === 0 ? (
-                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                  No notes found
-                </div>
-              ) : (
-                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredNotes.map((note) => (
-                    <li 
-                      key={note._id} 
-                      onClick={() => setSelectedNote(note)}
-                      className={`p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedNote?._id === note._id ? 'bg-blue-50 dark:bg-gray-700' : ''}`}
-                    >
-                      <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                        {note.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                        {note.content}
-                      </p>
-                      <p className="mt-2 text-xs text-gray-500">
-                        {new Date(note.updatedAt).toLocaleDateString()}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {/* Main note editor */}
-          <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
-            {selectedNote ? (
-              <div className="flex flex-col h-full">
+          {activeView === 'notes' ? (
+            <>
+              {/* Notes list */}
+              <div className="w-72 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <input
-                    type="text"
-                    value={selectedNote.title}
-                    onChange={(e) => {
-                      setSelectedNote({...selectedNote, title: e.target.value});
-                    }}
-                    className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
-                    placeholder="Note title"
-                  />
+                  <button
+                    onClick={createNewNote}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    + New Note
+                  </button>
                 </div>
-                <div className="flex-1 p-4 overflow-y-auto">
-                  <textarea
-                    value={selectedNote.content}
-                    onChange={(e) => {
-                      setSelectedNote({...selectedNote, content: e.target.value});
-                      updateNote(e.target.value);
-                    }}
-                    className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
-                    placeholder="Start writing..."
-                  ></textarea>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                <p>Select a note or create a new one</p>
-              </div>
-            )}
-          </div>
 
-          {/* Right sidebar - Actions */}
-          <div className="w-16 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-6">
-            {selectedNote && (
-              <>
-                <button 
-                  onClick={archiveNote}
-                  className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4"
-                  title="Archive Note"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={deleteNote}
-                  className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none"
-                  title="Delete Note"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </>
-            )}
-          </div>
+                <div className="overflow-y-auto flex-1">
+                  {filteredNotes.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+                      No notes found
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {filteredNotes.map((note) => (
+                        <li 
+                          key={note._id} 
+                          onClick={() => setSelectedNote(note)}
+                          className={`p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedNote?._id === note._id ? 'bg-blue-50 dark:bg-gray-700' : ''}`}
+                        >
+                          <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                            {note.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {note.content}
+                          </p>
+                          <p className="mt-2 text-xs text-gray-500">
+                            {new Date(note.updatedAt).toLocaleDateString()}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Main note editor */}
+              <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+                {selectedNote ? (
+                  <div className="flex flex-col h-full">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <input
+                        type="text"
+                        value={selectedNote.title}
+                        onChange={(e) => {
+                          setSelectedNote({...selectedNote, title: e.target.value});
+                        }}
+                        className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
+                        placeholder="Note title"
+                      />
+                    </div>
+                    <div className="flex-1 p-4 overflow-y-auto">
+                      <textarea
+                        value={selectedNote.content}
+                        onChange={(e) => {
+                          setSelectedNote({...selectedNote, content: e.target.value});
+                          updateNote(e.target.value);
+                        }}
+                        className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
+                        placeholder="Start writing..."
+                      ></textarea>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                    <p>Select a note or create a new one</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right sidebar - Actions */}
+              <div className="w-16 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-6">
+                {selectedNote && (
+                  <>
+                    <button 
+                      onClick={archiveNote}
+                      className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4"
+                      title="Archive Note"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={deleteNote}
+                      className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none"
+                      title="Delete Note"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            // Settings/Profile view that replaces the notes list and editor
+            <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+              <div className="max-w-4xl mx-auto p-6">
+                <div className="mb-8">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">User Settings</h1>
+                  <p className="text-gray-600 dark:text-gray-400">Manage your account and preferences</p>
+                </div>
+
+                {/* Profile Section */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Profile</h2>
+                  
+                  <div className="flex items-center mb-6">
+                    <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300 mr-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">User Name</h3>
+                      <p className="text-gray-600 dark:text-gray-400">user@example.com</p>
+                      <button className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        Change profile picture
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        defaultValue="User Name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        defaultValue="user@example.com"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Save Profile
+                  </button>
+                </div>
+                
+                {/* Preferences Section */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Preferences</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-white">Dark Mode</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Enable dark mode for the app</p>
+                      </div>
+                      <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" id="dark-mode" className="sr-only" />
+                        <div className="block h-6 bg-gray-300 dark:bg-gray-600 rounded-full w-12"></div>
+                        <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-white">Email Notifications</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Get notifications about your notes</p>
+                      </div>
+                      <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" id="notifications" className="sr-only" />
+                        <div className="block h-6 bg-gray-300 dark:bg-gray-600 rounded-full w-12"></div>
+                        <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Save Preferences
+                  </button>
+                </div>
+                
+                {/* Account Management */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Account Management</h2>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Change Password</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Current Password
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            New Password
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                          />
+                        </div>
+                      </div>
+                      <button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Update Password
+                      </button>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Danger Zone</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Once you delete your account, there is no going back. Please be certain.
+                      </p>
+                      <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Logout Button */}
+                <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button 
+                    onClick={() => setActiveView('notes')}
+                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    Back to Notes
+                  </button>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
