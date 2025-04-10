@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
@@ -7,6 +8,14 @@ import authRoutes from './routes/auth';
 dotenv.config();
 
 const app = express();
+
+// Configurar e ativar o CORS - adicione isso antes de outras middlewares
+app.use(cors({
+  origin: 'http://localhost:3000', // Substitua pela URL do seu frontend
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI as string)
