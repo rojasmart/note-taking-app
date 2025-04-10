@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Auth routes with validation
 const registerValidation: ValidationChain[] = [
+  body('name').notEmpty().withMessage('Name is required'),
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
 ];

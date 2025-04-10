@@ -14,7 +14,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { email, password } = req.body;
+    const { name, email, password } = req.body;
 
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
@@ -29,6 +29,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // Create the user
     const user = await User.create({
+      name,
       email,
       password: hashedPassword,
     });
