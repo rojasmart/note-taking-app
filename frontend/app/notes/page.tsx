@@ -70,13 +70,18 @@ export default function NotesHomepage() {
       router.push('/login');
       return;
     }
-
+  
+    setError(''); // Clear any previous errors
+    
     const newNote = {
       title: 'Untitled Note',
       content: ''
     };
-
+  
     try {
+      // Log the request for debugging
+      console.log('Creating new note with request to:', 'http://localhost:5000/api/notes');
+      
       const response = await fetch('http://localhost:5000/api/notes', {
         method: 'POST',
         headers: {
@@ -85,16 +90,34 @@ export default function NotesHomepage() {
         },
         body: JSON.stringify(newNote)
       });
-
+      
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to create note');
+        const errorData = await response.json().catch(() => null);
+        console.error('Error response:', errorData);
+        throw new Error(errorData?.message || `Failed to create note (Status: ${response.status})`);
       }
-
-      const createdNote = await response.json();
+  
+      const responseData = await response.json();
+      console.log('Create note response:', responseData);
+      
+      // Since the backend doesn't return a complete note object with all fields,
+      // we need to construct a full note object here
+      const createdNote: Note = {
+        _id: Date.now().toString(), // Temporary ID until backend provides real ones
+        title: newNote.title,
+        content: newNote.content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...responseData.note // Include any fields that the backend does return
+      };
+      
       setNotes([createdNote, ...notes]);
       setSelectedNote(createdNote);
       setActiveView('notes');
     } catch (err) {
+      console.error('Error creating note:', err);
       setError(err instanceof Error ? err.message : 'An error occurred while creating a note');
     }
   };

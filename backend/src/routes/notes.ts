@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import Note from '../models/Note'; // Importando o modelo de nota
 
 const router = express.Router();
 
@@ -13,11 +14,23 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Criar uma nova nota
-router.post('/', (req: Request, res: Response) => {
-  res.status(201).json({ 
-    message: 'Nota criada com sucesso', 
-    note: req.body 
-  });
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const newNote = {
+      title: req.body.title,
+      content: req.body.content,
+      userId: req.body.userId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Save to database (MongoDB example)
+    const savedNote = await Note.create(newNote);
+    
+    res.status(201).json(savedNote);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating note' });
+  }
 });
 
 // Atualizar uma nota
