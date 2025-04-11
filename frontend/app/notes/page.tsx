@@ -51,10 +51,15 @@ export default function NotesHomepage() {
         }
 
         const data = await response.json();
-        setNotes(data);
+
+        // Verifique se data é um array. Se não, use um array vazio ou extraia a parte array da resposta
+        const notesArray = Array.isArray(data) ? data : [];
+
+        setNotes(notesArray);
+
         // Select first note by default if available
-        if (data.length > 0) {
-          setSelectedNote(data[0]);
+        if (notesArray.length > 0) {
+          setSelectedNote(notesArray[0]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred while fetching notes");
@@ -94,18 +99,36 @@ export default function NotesHomepage() {
     setError("");
 
     try {
-      console.log("Creating new note with request to:", "http://localhost:5000/api/notes");
+      // URL completa para debugging
+      const url = "http://localhost:5000/api/notes";
+      console.log("Creating new note with request to:", url);
 
-      const response = await fetch("http://localhost:5000/api/notes", {
+      // Dados sendo enviados
+      const noteToSave = {
+        title: newNoteData.title || "Untitled Note",
+        content: newNoteData.content || "",
+        tags: newNoteData.tags || [],
+        userId: "000000000000000000000000", // ID de usuário temporário em formato ObjectId
+      };
+
+      console.log("Sending data:", JSON.stringify(noteToSave));
+
+      // Enviando a requisição com log detalhado
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newNoteData),
+        body: JSON.stringify(noteToSave),
       });
 
-      console.log("Response status:", response.status);
+      console.log("Response status:", response.status, response.statusText);
+
+      // Verificar se é erro 404 e fornecer informações claras
+      if (response.status === 404) {
+        throw new Error(`API endpoint não encontrado: ${url}. Verifique se o servidor está rodando e se a rota está correta.`);
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -132,6 +155,8 @@ export default function NotesHomepage() {
     } catch (err) {
       console.error("Error creating note:", err);
       setError(err instanceof Error ? err.message : "An error occurred while creating a note");
+      // Manter o form aberto em caso de erro
+      // setIsCreatingNewNote(false);
     }
   };
 
@@ -334,7 +359,7 @@ export default function NotesHomepage() {
                 </div>
 
                 <div className="overflow-y-auto flex-1">
-                  {filteredNotes.length === 0 ? (
+                  {!Array.isArray(filteredNotes) || filteredNotes.length === 0 ? (
                     <div className="p-6 text-center text-gray-500 dark:text-gray-400">No notes found</div>
                   ) : (
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
