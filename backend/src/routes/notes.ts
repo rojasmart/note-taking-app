@@ -8,7 +8,8 @@ const router = express.Router();
 router.get("/", async (req: Request, res: Response) => {
   try {
     // Aqui você usaria seu modelo para buscar as notas
-    // const notes = await Note.find();
+    const notes = await Note.find();
+    console.log("Notas encontradas:", notes);
 
     // Por enquanto, retorne um array vazio ou um array de exemplo
     res.json([
