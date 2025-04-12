@@ -62,11 +62,55 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Atualizar uma nota
-router.put("/:id", (req: Request, res: Response) => {
-  res.json({
-    message: `Nota ${req.params.id} atualizada`,
-    note: req.body,
-  });
+// Atualizar uma nota
+router.put("/:id", async (req: Request, res: Response): Promise<any> => {
+  try {
+    console.log(`Tentando atualizar nota com ID: ${req.params.id}`);
+
+    // Verificar se o ID é válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.log(`ID inválido: ${req.params.id}`);
+      return res.status(400).json({ message: "ID de nota inválido" });
+    }
+
+    // Verificar se a nota existe
+    const existingNote = await Note.findById(req.params.id);
+    if (!existingNote) {
+      console.log(`Nota não encontrada com ID: ${req.params.id}`);
+      return res.status(404).json({ message: "Nota não encontrada" });
+    }
+
+    // Preparar dados para atualização
+    const updateData = {
+      title: req.body.title || existingNote.title,
+      content: req.body.content || existingNote.content,
+      tags: req.body.tags || existingNote.tags,
+      updatedAt: new Date(),
+    };
+
+    console.log("Atualizando nota com dados:", updateData);
+
+    // Atualizar a nota no banco de dados
+    const updatedNote = await Note.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true } // Retorna o documento atualizado
+    );
+
+    console.log("Nota atualizada com sucesso:", updatedNote);
+
+    return res.json({
+      message: `Nota ${req.params.id} atualizada com sucesso`,
+      note: updatedNote,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar nota:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    return res.status(500).json({
+      message: "Erro ao atualizar nota",
+      error: errorMessage,
+    });
+  }
 });
 
 // Excluir uma nota
