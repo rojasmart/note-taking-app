@@ -70,8 +70,46 @@ router.put("/:id", (req: Request, res: Response) => {
 });
 
 // Excluir uma nota
-router.delete("/:id", (req: Request, res: Response) => {
-  res.json({ message: `Nota ${req.params.id} excluída` });
+router.delete("/:id", async (req: Request, res: Response): Promise<any> => {
+  try {
+    console.log(`Tentando excluir nota com ID: ${req.params.id}`);
+
+    // Verificar se o ID é válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.log(`ID inválido: ${req.params.id}`);
+      return res.status(400).json({ message: "ID de nota inválido" });
+    }
+
+    // Buscar a nota primeiro
+    const noteToDelete = await Note.findById(req.params.id);
+
+    // Verificar se a nota existe
+    if (!noteToDelete) {
+      console.log(`Nota não encontrada com ID: ${req.params.id}`);
+      return res.status(404).json({ message: "Nota não encontrada" });
+    }
+
+    // Excluir a nota
+    await Note.deleteOne({ _id: req.params.id });
+
+    console.log(`Nota excluída com sucesso: ${req.params.id}`);
+
+    // Retornar sucesso
+    return res.json({
+      message: `Nota ${req.params.id} excluída com sucesso`,
+      deletedNote: {
+        _id: noteToDelete._id,
+        title: noteToDelete.title,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao excluir nota:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    return res.status(500).json({
+      message: "Erro ao excluir nota",
+      error: errorMessage,
+    });
+  }
 });
 
 export default router;
