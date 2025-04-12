@@ -9,28 +9,9 @@ router.get("/", async (req: Request, res: Response) => {
   try {
     // Aqui você usaria seu modelo para buscar as notas
     const notes = await Note.find();
-    console.log("Notas encontradas:", notes);
 
     // Por enquanto, retorne um array vazio ou um array de exemplo
-    res.json([
-      // Exemplo de notas
-      {
-        _id: "1",
-        title: "Primeira Nota",
-        content: "Conteúdo da primeira nota",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        tags: ["tag1", "tag2"],
-      },
-      {
-        _id: "2",
-        title: "Segunda Nota",
-        content: "Conteúdo da segunda nota",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        tags: ["tag3"],
-      },
-    ]);
+    res.json(notes);
   } catch (error) {
     console.error("Erro ao buscar notas:", error);
     res.status(500).json({ message: "Erro ao buscar notas" });

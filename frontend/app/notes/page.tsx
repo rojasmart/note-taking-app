@@ -51,6 +51,7 @@ export default function NotesHomepage() {
         }
 
         const data = await response.json();
+        console.log("Fetched notes:", data);
 
         // Verifique se data é um array. Se não, use um array vazio ou extraia a parte array da resposta
         const notesArray = Array.isArray(data) ? data : [];
