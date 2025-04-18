@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Note {
@@ -20,6 +20,8 @@ export default function NotesHomepage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const [isCreatingNewNote, setIsCreatingNewNote] = useState(false);
   const [newNoteData, setNewNoteData] = useState({
     title: "",
@@ -29,6 +31,8 @@ export default function NotesHomepage() {
   const [tagInput, setTagInput] = useState("");
 
   const router = useRouter();
+
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -170,6 +174,8 @@ export default function NotesHomepage() {
       return;
     }
 
+    setIsSaving(true); // Mostrar indicador de salvamento
+
     try {
       const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
         method: "PUT",
@@ -179,7 +185,7 @@ export default function NotesHomepage() {
         },
         body: JSON.stringify({
           ...selectedNote,
-          content: updatedContent,
+          content: updatedContent, // Atualizar o conteúdo
         }),
       });
 
@@ -192,6 +198,8 @@ export default function NotesHomepage() {
       setNotes(notes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while updating the note");
+    } finally {
+      setIsSaving(false); // Ocultar indicador de salvamento
     }
   };
 
@@ -251,6 +259,23 @@ export default function NotesHomepage() {
       ...newNoteData,
       tags: newNoteData.tags.filter((tag) => tag !== tagToRemove),
     });
+  };
+
+  const handleContentChange = (updatedContent: string) => {
+    if (!selectedNote) return;
+
+    // Atualizar o conteúdo da nota no estado
+    setSelectedNote({ ...selectedNote, content: updatedContent });
+
+    // Limpar o timeout anterior, se existir
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Configurar um novo timeout para salvar após 1 segundo
+    debounceTimeout.current = setTimeout(() => {
+      updateNote(updatedContent); // Chamar a função de salvamento
+    }, 1000); // 1000ms = 1 segundo
   };
 
   const filteredNotes = searchQuery
@@ -330,7 +355,7 @@ export default function NotesHomepage() {
                   activeView === "settings"
                     ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                } flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none`}
+                } flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none cursor-pointer`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -353,7 +378,7 @@ export default function NotesHomepage() {
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <button
                     onClick={createNewNote}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
                   >
                     + New Note
                   </button>
@@ -395,7 +420,10 @@ export default function NotesHomepage() {
                         placeholder="Note title"
                         autoFocus
                       />
-                      <button onClick={saveNewNote} className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                      <button
+                        onClick={saveNewNote}
+                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
                         Save
                       </button>
                     </div>
@@ -443,24 +471,31 @@ export default function NotesHomepage() {
                   </div>
                 ) : selectedNote ? (
                   <div className="flex flex-col h-full">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                       <input
                         type="text"
-                        value={selectedNote.title}
+                        value={selectedNote?.title || ""}
                         onChange={(e) => {
-                          setSelectedNote({ ...selectedNote, title: e.target.value });
+                          const updatedTitle = e.target.value;
+                          setSelectedNote({ ...selectedNote, title: updatedTitle });
+
+                          // Salvar automaticamente após a edição do título
+                          if (debounceTimeout.current) {
+                            clearTimeout(debounceTimeout.current);
+                          }
+                          debounceTimeout.current = setTimeout(() => {
+                            updateNote(updatedTitle);
+                          }, 1000); // Salvar após 1 segundo
                         }}
                         className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Note title"
                       />
+                      {isSaving && <span className="text-sm text-gray-500 ml-2">Saving...</span>}
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto">
                       <textarea
-                        value={selectedNote.content}
-                        onChange={(e) => {
-                          setSelectedNote({ ...selectedNote, content: e.target.value });
-                          updateNote(e.target.value);
-                        }}
+                        value={selectedNote?.content || ""}
+                        onChange={(e) => handleContentChange(e.target.value)}
                         className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
                         placeholder="Start writing..."
                       ></textarea>
@@ -479,7 +514,7 @@ export default function NotesHomepage() {
                   <>
                     <button
                       onClick={archiveNote}
-                      className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4"
+                      className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4 cursor-pointer"
                       title="Archive Note"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -493,7 +528,7 @@ export default function NotesHomepage() {
                     </button>
                     <button
                       onClick={deleteNote}
-                      className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none"
+                      className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none cursor-pointer"
                       title="Delete Note"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
