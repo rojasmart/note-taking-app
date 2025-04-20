@@ -165,7 +165,7 @@ export default function NotesHomepage() {
     }
   };
 
-  const updateNote = async (updatedContent: string) => {
+  const updateNote = async (updatedTitle: string, updatedContent: string) => {
     if (!selectedNote) return;
 
     const token = localStorage.getItem("token");
@@ -185,6 +185,7 @@ export default function NotesHomepage() {
         },
         body: JSON.stringify({
           ...selectedNote,
+          title: updatedTitle, // Atualizar o título
           content: updatedContent, // Atualizar o conteúdo
         }),
       });
@@ -194,8 +195,10 @@ export default function NotesHomepage() {
       }
 
       const updatedNote = await response.json();
+
+      // Atualizar o estado local
       setSelectedNote(updatedNote);
-      setNotes(notes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
+      setNotes((prevNotes) => prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while updating the note");
     } finally {
@@ -478,27 +481,33 @@ export default function NotesHomepage() {
                         onChange={(e) => {
                           const updatedTitle = e.target.value;
                           setSelectedNote({ ...selectedNote, title: updatedTitle });
-
-                          // Salvar automaticamente após a edição do título
-                          if (debounceTimeout.current) {
-                            clearTimeout(debounceTimeout.current);
-                          }
-                          debounceTimeout.current = setTimeout(() => {
-                            updateNote(updatedTitle);
-                          }, 1000); // Salvar após 1 segundo
                         }}
                         className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Note title"
                       />
-                      {isSaving && <span className="text-sm text-gray-500 ml-2">Saving...</span>}
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto">
                       <textarea
                         value={selectedNote?.content || ""}
-                        onChange={(e) => handleContentChange(e.target.value)}
+                        onChange={(e) => {
+                          const updatedContent = e.target.value;
+                          setSelectedNote({ ...selectedNote, content: updatedContent });
+                        }}
                         className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
                         placeholder="Start writing..."
                       ></textarea>
+                    </div>
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                      <button
+                        onClick={() => {
+                          if (selectedNote) {
+                            updateNote(selectedNote.title, selectedNote.content);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        Update
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -507,7 +516,7 @@ export default function NotesHomepage() {
                   </div>
                 )}
               </div>
-
+              {isSaving && <div className="text-sm text-gray-500 dark:text-gray-400">Saving...</div>}
               {/* Right sidebar - Actions */}
               <div className="w-16 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-6">
                 {selectedNote && (
