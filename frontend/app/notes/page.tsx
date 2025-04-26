@@ -20,6 +20,8 @@ export default function NotesHomepage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
 
+  const [noteUpdated, setNoteUpdated] = useState(false);
+
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -196,11 +198,12 @@ export default function NotesHomepage() {
       }
 
       const updatedNote = await response.json();
-
       // Atualizar a nota selecionada
       setSelectedNote(updatedNote);
       setUpdateSuccess(true);
+      setNoteUpdated(true); // Set this to true when update is successful
       setTimeout(() => setUpdateSuccess(false), 2000); // Remove o feedback após 2 segundos
+
       // Atualizar a lista de notas
       setNotes((prevNotes) => prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
 
@@ -287,6 +290,38 @@ export default function NotesHomepage() {
       updateNote(updatedContent); // Chamar a função de salvamento
     }, 1000); // 1000ms = 1 segundo
   };
+
+  // Add the useEffect to handle the update
+  useEffect(() => {
+    if (noteUpdated) {
+      const fetchNotes = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        try {
+          const response = await fetch("http://localhost:5000/api/notes", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch notes");
+          }
+
+          const data = await response.json();
+          const notesArray = Array.isArray(data) ? data : [];
+          setNotes(notesArray);
+        } catch (err) {
+          console.error("Failed to refresh notes:", err);
+        } finally {
+          setNoteUpdated(false); // Reset the flag
+        }
+      };
+
+      fetchNotes();
+    }
+  }, [noteUpdated]);
 
   const filteredNotes = searchQuery
     ? notes.filter(
@@ -398,7 +433,7 @@ export default function NotesHomepage() {
                   {!Array.isArray(filteredNotes) || filteredNotes.length === 0 ? (
                     <div className="p-6 text-center text-gray-500 dark:text-gray-400">No notes found</div>
                   ) : (
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700 hello">
                       {filteredNotes.map((note) => (
                         <li
                           key={note._id}
