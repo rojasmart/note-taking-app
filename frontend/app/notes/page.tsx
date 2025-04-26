@@ -344,7 +344,9 @@ export default function NotesHomepage() {
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-center p-2">
             {/* Replace with your actual logo */}
-            <div className="text-white font-bold text-xl p-2 rounded">Notes App</div>
+            <div className="flex items-center gap-2">
+              <img src="/logo_dark.svg" alt="Notes App Logo" className="h-15 w-30" />
+            </div>
           </div>
         </div>
 
