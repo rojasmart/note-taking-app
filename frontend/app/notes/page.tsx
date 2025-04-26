@@ -20,6 +20,8 @@ export default function NotesHomepage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
 
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
 
   const [isCreatingNewNote, setIsCreatingNewNote] = useState(false);
@@ -174,7 +176,7 @@ export default function NotesHomepage() {
       return;
     }
 
-    setIsSaving(true); // Mostrar indicador de salvamento
+    setIsSaving(true);
 
     try {
       const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
@@ -184,9 +186,8 @@ export default function NotesHomepage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...selectedNote,
-          title: updatedTitle, // Atualizar o título
-          content: updatedContent, // Atualizar o conteúdo
+          title: updatedTitle,
+          content: updatedContent,
         }),
       });
 
@@ -196,13 +197,19 @@ export default function NotesHomepage() {
 
       const updatedNote = await response.json();
 
-      // Atualizar o estado local
+      // Atualizar a nota selecionada
       setSelectedNote(updatedNote);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 2000); // Remove o feedback após 2 segundos
+      // Atualizar a lista de notas
       setNotes((prevNotes) => prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
+
+      // Adicionar feedback visual de sucesso
+      console.log("Note updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while updating the note");
     } finally {
-      setIsSaving(false); // Ocultar indicador de salvamento
+      setIsSaving(false);
     }
   };
 
@@ -480,7 +487,10 @@ export default function NotesHomepage() {
                         value={selectedNote?.title || ""}
                         onChange={(e) => {
                           const updatedTitle = e.target.value;
-                          setSelectedNote({ ...selectedNote, title: updatedTitle });
+                          setSelectedNote((prev) => ({
+                            ...prev!,
+                            title: updatedTitle,
+                          }));
                         }}
                         className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Note title"
@@ -491,13 +501,17 @@ export default function NotesHomepage() {
                         value={selectedNote?.content || ""}
                         onChange={(e) => {
                           const updatedContent = e.target.value;
-                          setSelectedNote({ ...selectedNote, content: updatedContent });
+                          setSelectedNote((prev) => ({
+                            ...prev!,
+                            content: updatedContent,
+                          }));
                         }}
                         className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
                         placeholder="Start writing..."
-                      ></textarea>
+                      />
                     </div>
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
                       <button
                         onClick={() => {
                           if (selectedNote) {
@@ -517,6 +531,9 @@ export default function NotesHomepage() {
                 )}
               </div>
               {isSaving && <div className="text-sm text-gray-500 dark:text-gray-400">Saving...</div>}
+              {updateSuccess && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg">Note updated successfully!</div>
+              )}
               {/* Right sidebar - Actions */}
               <div className="w-16 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-6">
                 {selectedNote && (
