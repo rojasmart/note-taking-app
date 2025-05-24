@@ -10,6 +10,7 @@ interface Note {
   createdAt: string;
   updatedAt: string;
   tags?: string[];
+  archived: boolean;
 }
 
 export default function NotesHomepage() {
@@ -20,6 +21,7 @@ export default function NotesHomepage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null); // Para filtrar por tag específica
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [noteUpdated, setNoteUpdated] = useState(false);
 
@@ -48,7 +50,7 @@ export default function NotesHomepage() {
       }
 
       try {
-        const response = await fetch("http://localhost:5000/api/notes", {
+        const response = await fetch(`http://localhost:5000/api/notes?archived=${showArchived}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -61,13 +63,10 @@ export default function NotesHomepage() {
         const data = await response.json();
         console.log("Fetched notes:", data);
 
-        // Verifique se data é um array. Se não, use um array vazio ou extraia a parte array da resposta
         const notesArray = Array.isArray(data) ? data : [];
-
         setNotes(notesArray);
 
-        // Select first note by default if available
-        if (notesArray.length > 0) {
+        if (notesArray.length > 0 && !selectedNote) {
           setSelectedNote(notesArray[0]);
         }
       } catch (err) {
@@ -78,7 +77,7 @@ export default function NotesHomepage() {
     };
 
     fetchNotes();
-  }, [router]);
+  }, [router, showArchived]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -156,6 +155,7 @@ export default function NotesHomepage() {
         tags: newNoteData.tags || [],
         createdAt: responseData.createdAt || new Date().toISOString(),
         updatedAt: responseData.updatedAt || new Date().toISOString(),
+        archived: false, // Definir como não arquivada por padrão
       };
 
       setNotes([createdNote, ...notes]);
@@ -297,9 +297,36 @@ export default function NotesHomepage() {
   const archiveNote = async () => {
     if (!selectedNote) return;
 
-    // This would typically update a field on the note to mark it as archived
-    // For this example, let's just show an alert
-    alert("Archive functionality would be implemented here");
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}/archive`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to archive note");
+      }
+
+      const { note } = await response.json();
+
+      // Remove note from current list and update selected note
+      setNotes((prevNotes) => prevNotes.filter((n) => n._id !== selectedNote._id));
+      setSelectedNote(null);
+
+      // Show success message
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred while archiving the note");
+    }
   };
   // Função para adicionar tags (para novas notas)
   const handleAddTag = () => {
@@ -496,7 +523,6 @@ export default function NotesHomepage() {
         {/* Top header with search */}
         <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
           <div className="flex justify-between items-center p-4">
-            {" "}
             <div className="flex-1 max-w-xl">
               <div className="relative">
                 <input
@@ -512,22 +538,26 @@ export default function NotesHomepage() {
                   </svg>
                 </div>
               </div>
-              {activeTag && (
-                <div className="mt-2 flex items-center">
-                  <span className="text-sm mr-2">Filtering by tag:</span>
-                  <div className="flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
-                    {activeTag}
-                    <button
-                      onClick={() => setActiveTag(null)}
-                      className="ml-1 w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-            <div className="relative ml-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={`flex items-center px-3 py-2 rounded-md ${
+                  showArchived
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                } hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                  />
+                </svg>
+                {showArchived ? "Show Active" : "Show Archived"}
+              </button>
               <button
                 onClick={() => setActiveView(activeView === "notes" ? "settings" : "notes")}
                 className={`w-10 h-10 rounded-full ${

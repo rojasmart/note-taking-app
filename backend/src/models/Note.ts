@@ -6,6 +6,7 @@ export interface INote extends Document {
   content: string;
   userId: string;
   tags?: string[];
+  archived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,10 @@ const NoteSchema: Schema = new Schema({
       type: String,
     },
   ],
+  archived: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

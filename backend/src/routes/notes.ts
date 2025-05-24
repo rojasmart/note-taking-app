@@ -1,16 +1,16 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
-import Note from "../models/Note"; // Importando o modelo de nota
+import Note from "../models/Note";
 
 const router = express.Router();
 
 // Obter todas as notas
 router.get("/", async (req: Request, res: Response) => {
   try {
-    // Aqui você usaria seu modelo para buscar as notas
-    const notes = await Note.find();
-
-    // Por enquanto, retorne um array vazio ou um array de exemplo
+    // Get archived status from query params, default to false
+    const archived = req.query.archived === 'true';
+    
+    const notes = await Note.find({ archived });
     res.json(notes);
   } catch (error) {
     console.error("Erro ao buscar notas:", error);
@@ -62,7 +62,6 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Atualizar uma nota
-// Atualizar uma nota
 router.put("/:id", async (req: Request, res: Response): Promise<any> => {
   try {
     console.log(`Tentando atualizar nota com ID: ${req.params.id}`);
@@ -85,16 +84,16 @@ router.put("/:id", async (req: Request, res: Response): Promise<any> => {
       title: req.body.title || existingNote.title,
       content: req.body.content || existingNote.content,
       tags: req.body.tags || existingNote.tags,
+      archived: req.body.archived !== undefined ? req.body.archived : existingNote.archived,
       updatedAt: new Date(),
     };
 
     console.log("Atualizando nota com dados:", updateData);
 
-    // Atualizar a nota no banco de dados
     const updatedNote = await Note.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true } // Retorna o documento atualizado
+      { new: true }
     );
 
     console.log("Nota atualizada com sucesso:", updatedNote);
@@ -109,6 +108,36 @@ router.put("/:id", async (req: Request, res: Response): Promise<any> => {
     return res.status(500).json({
       message: "Erro ao atualizar nota",
       error: errorMessage,
+    });
+  }
+});
+
+// Toggle archive status
+router.put("/:id/archive", async (req: Request, res: Response): Promise<any> => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "ID de nota inválido" });
+    }
+
+    const note = await Note.findById(req.params.id);
+    if (!note) {
+      return res.status(404).json({ message: "Nota não encontrada" });
+    }
+
+    // Toggle the archived status
+    note.archived = !note.archived;
+    await note.save();
+
+    return res.json({
+      message: `Nota ${note.archived ? 'arquivada' : 'desarquivada'} com sucesso`,
+      note
+    });
+  } catch (error) {
+    console.error("Erro ao arquivar/desarquivar nota:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    return res.status(500).json({
+      message: "Erro ao arquivar/desarquivar nota",
+      error: errorMessage
     });
   }
 });
