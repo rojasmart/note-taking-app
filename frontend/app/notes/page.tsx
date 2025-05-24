@@ -18,6 +18,7 @@ export default function NotesHomepage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null); // Para filtrar por tag específica
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
 
   const [noteUpdated, setNoteUpdated] = useState(false);
@@ -25,14 +26,13 @@ export default function NotesHomepage() {
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
-
   const [isCreatingNewNote, setIsCreatingNewNote] = useState(false);
   const [newNoteData, setNewNoteData] = useState({
     title: "",
     content: "",
     tags: [] as string[],
   });
-  const [tagInput, setTagInput] = useState("");
+  const [tagInput, setTagInput] = useState(""); // Usado tanto para novas notas quanto para edição
 
   const router = useRouter();
 
@@ -168,7 +168,6 @@ export default function NotesHomepage() {
       // setIsCreatingNewNote(false);
     }
   };
-
   const updateNote = async (updatedTitle: string, updatedContent: string) => {
     if (!selectedNote) return;
 
@@ -190,6 +189,7 @@ export default function NotesHomepage() {
         body: JSON.stringify({
           title: updatedTitle,
           content: updatedContent,
+          tags: selectedNote.tags || [],
         }),
       });
 
@@ -211,6 +211,53 @@ export default function NotesHomepage() {
       console.log("Note updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while updating the note");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateNoteWithTags = async (title: string, content: string, tags: string[]) => {
+    if (!selectedNote) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          tags,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update note tags");
+      }
+
+      const updatedNote = await response.json();
+      // Atualizar a nota selecionada
+      setSelectedNote(updatedNote);
+      setUpdateSuccess(true);
+      setNoteUpdated(true);
+      setTimeout(() => setUpdateSuccess(false), 2000);
+
+      // Atualizar a lista de notas
+      setNotes((prevNotes) => prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
+
+      console.log("Note tags updated successfully");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred while updating tags");
     } finally {
       setIsSaving(false);
     }
@@ -254,8 +301,7 @@ export default function NotesHomepage() {
     // For this example, let's just show an alert
     alert("Archive functionality would be implemented here");
   };
-
-  // Função para adicionar tags
+  // Função para adicionar tags (para novas notas)
   const handleAddTag = () => {
     if (tagInput.trim() && !newNoteData.tags.includes(tagInput.trim())) {
       setNewNoteData({
@@ -266,7 +312,7 @@ export default function NotesHomepage() {
     }
   };
 
-  // Função para remover tag
+  // Função para remover tag (para novas notas)
   const handleRemoveTag = (tagToRemove: string) => {
     setNewNoteData({
       ...newNoteData,
@@ -274,6 +320,42 @@ export default function NotesHomepage() {
     });
   };
 
+  // Função para adicionar tag à nota existente
+  const handleAddTagToExistingNote = () => {
+    if (!selectedNote || !tagInput.trim()) return;
+
+    const trimmedTag = tagInput.trim();
+    // Verifica se a tag já existe na nota
+    if (selectedNote.tags?.includes(trimmedTag)) {
+      setTagInput("");
+      return;
+    }
+
+    // Atualizar o estado local
+    const updatedTags = [...(selectedNote.tags || []), trimmedTag];
+    setSelectedNote({
+      ...selectedNote,
+      tags: updatedTags,
+    });
+
+    // Enviar atualização para o servidor
+    updateNoteWithTags(selectedNote.title, selectedNote.content, updatedTags);
+    setTagInput("");
+  };
+
+  // Função para remover tag de nota existente
+  const handleRemoveTagFromExistingNote = (tagToRemove: string) => {
+    if (!selectedNote || !selectedNote.tags) return;
+
+    const updatedTags = selectedNote.tags.filter((tag) => tag !== tagToRemove);
+    setSelectedNote({
+      ...selectedNote,
+      tags: updatedTags,
+    });
+
+    // Enviar atualização para o servidor
+    updateNoteWithTags(selectedNote.title, selectedNote.content, updatedTags);
+  };
   const handleContentChange = (updatedContent: string) => {
     if (!selectedNote) return;
 
@@ -287,7 +369,7 @@ export default function NotesHomepage() {
 
     // Configurar um novo timeout para salvar após 1 segundo
     debounceTimeout.current = setTimeout(() => {
-      updateNote(updatedContent); // Chamar a função de salvamento
+      updateNote(selectedNote.title, updatedContent); // Chamar a função de salvamento com título e conteúdo
     }, 1000); // 1000ms = 1 segundo
   };
 
@@ -322,12 +404,28 @@ export default function NotesHomepage() {
       fetchNotes();
     }
   }, [noteUpdated]);
+  // Função auxiliar para extrair todas as tags únicas das notas
+  const getAllUniqueTags = () => {
+    const allTags = new Set<string>();
+    notes.forEach((note) => {
+      note.tags?.forEach((tag) => {
+        allTags.add(tag);
+      });
+    });
+    return Array.from(allTags);
+  };
 
-  const filteredNotes = searchQuery
-    ? notes.filter(
-        (note) => note.title.toLowerCase().includes(searchQuery.toLowerCase()) || note.content.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : notes;
+  // Filtragem por pesquisa e tag
+  const filteredNotes = notes.filter((note) => {
+    // Filtro por texto de pesquisa
+    const matchesSearch =
+      !searchQuery || note.title.toLowerCase().includes(searchQuery.toLowerCase()) || note.content.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Filtro por tag ativa
+    const matchesTag = !activeTag || note.tags?.includes(activeTag);
+
+    return matchesSearch && matchesTag;
+  });
 
   if (isLoading) {
     return (
@@ -348,28 +446,48 @@ export default function NotesHomepage() {
               <img src="/logo_dark.svg" alt="Notes App Logo" className="h-15 w-30" />
             </div>
           </div>
-        </div>
-
+        </div>{" "}
         <div className="p-4">
           <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Tags</h2>
+          <div className="mb-4">
+            <button
+              onClick={() => setActiveTag(null)}
+              className={`text-sm px-3 py-1 mb-2 rounded-full ${
+                !activeTag
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              All Notes
+            </button>
+          </div>
           <ul className="space-y-2">
-            {/* Example tags - these would come from your data */}
-            <li className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer">
-              <span className="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-              Work
-            </li>
-            <li className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer">
-              <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-              Personal
-            </li>
-            <li className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer">
-              <span className="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-              Ideas
-            </li>
-            <li className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer">
-              <span className="w-3 h-3 rounded-full bg-purple-500 mr-2"></span>
-              Projects
-            </li>
+            {getAllUniqueTags().length > 0 ? (
+              getAllUniqueTags().map((tag, index) => (
+                <li
+                  key={tag}
+                  className={`flex items-center justify-between text-sm hover:text-blue-600 cursor-pointer ${
+                    activeTag === tag ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-gray-400"
+                  }`}
+                  onClick={() => setActiveTag(tag)}
+                >
+                  <div className="flex items-center">
+                    <span
+                      className={`w-3 h-3 rounded-full mr-2 ${
+                        // Cores diferentes para diferentes tags
+                        ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-yellow-500", "bg-pink-500"][index % 6]
+                      }`}
+                    ></span>
+                    {tag}
+                  </div>
+                  <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                    {notes.filter((note) => note.tags?.includes(tag)).length}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li className="text-sm text-gray-500 dark:text-gray-400">No tags yet</li>
+            )}
           </ul>
         </div>
       </div>
@@ -378,6 +496,7 @@ export default function NotesHomepage() {
         {/* Top header with search */}
         <header className="bg-white dark:bg-gray-800 shadow-sm z-10">
           <div className="flex justify-between items-center p-4">
+            {" "}
             <div className="flex-1 max-w-xl">
               <div className="relative">
                 <input
@@ -393,8 +512,21 @@ export default function NotesHomepage() {
                   </svg>
                 </div>
               </div>
+              {activeTag && (
+                <div className="mt-2 flex items-center">
+                  <span className="text-sm mr-2">Filtering by tag:</span>
+                  <div className="flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                    {activeTag}
+                    <button
+                      onClick={() => setActiveTag(null)}
+                      className="ml-1 w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-
             <div className="relative ml-4">
               <button
                 onClick={() => setActiveView(activeView === "notes" ? "settings" : "notes")}
@@ -436,6 +568,7 @@ export default function NotesHomepage() {
                     <div className="p-6 text-center text-gray-500 dark:text-gray-400">No notes found</div>
                   ) : (
                     <ul className="divide-y divide-gray-200 dark:divide-gray-700 hello">
+                      {" "}
                       {filteredNotes.map((note) => (
                         <li
                           key={note._id}
@@ -446,6 +579,18 @@ export default function NotesHomepage() {
                         >
                           <h3 className="font-medium text-gray-900 dark:text-white truncate">{note.title}</h3>
                           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{note.content}</p>
+                          {note.tags && note.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {note.tags.map((tag) => (
+                                <span
+                                  key={`${note._id}-${tag}`}
+                                  className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           <p className="mt-2 text-xs text-gray-500">{new Date(note.updatedAt).toLocaleDateString()}</p>
                         </li>
                       ))}
@@ -518,6 +663,7 @@ export default function NotesHomepage() {
                   </div>
                 ) : selectedNote ? (
                   <div className="flex flex-col h-full">
+                    {" "}
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                       <input
                         type="text"
@@ -532,6 +678,50 @@ export default function NotesHomepage() {
                         className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Note title"
                       />
+                    </div>
+                    {/* Seção de tags para notas existentes */}
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        {selectedNote.tags && selectedNote.tags.length > 0 ? (
+                          selectedNote.tags.map((tag) => (
+                            <div
+                              key={tag}
+                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full flex items-center text-sm"
+                            >
+                              <span>{tag}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Impedir a propagação do evento de clique
+                                  handleRemoveTagFromExistingNote(tag);
+                                }}
+                                className="ml-1 w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800"
+                                title="Remove tag"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 italic">No tags</div>
+                        )}
+                      </div>
+                      <div className="flex mt-2">
+                        <input
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddTagToExistingNote()}
+                          className="border border-gray-300 dark:border-gray-600 rounded-l-md px-2 py-1 text-sm bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          placeholder="Add tag..."
+                        />
+                        <button
+                          onClick={handleAddTagToExistingNote}
+                          className="px-2 py-1 bg-blue-600 text-white text-sm rounded-r-md hover:bg-blue-700"
+                          title="Add tag"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto">
                       <textarea
@@ -548,7 +738,7 @@ export default function NotesHomepage() {
                       />
                     </div>
                     <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                      {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+                      {isSaving && <span className="text-sm text-gray-500">Saving...</span>}{" "}
                       <button
                         onClick={() => {
                           if (selectedNote) {
