@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Note {
@@ -20,6 +20,12 @@ export default function NotesHomepage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeView, setActiveView] = useState<"notes" | "settings">("notes");
 
+  const [noteUpdated, setNoteUpdated] = useState(false);
+
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  const [isSaving, setIsSaving] = useState(false);
+
   const [isCreatingNewNote, setIsCreatingNewNote] = useState(false);
   const [newNoteData, setNewNoteData] = useState({
     title: "",
@@ -29,6 +35,8 @@ export default function NotesHomepage() {
   const [tagInput, setTagInput] = useState("");
 
   const router = useRouter();
+
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -161,7 +169,7 @@ export default function NotesHomepage() {
     }
   };
 
-  const updateNote = async (updatedContent: string) => {
+  const updateNote = async (updatedTitle: string, updatedContent: string) => {
     if (!selectedNote) return;
 
     const token = localStorage.getItem("token");
@@ -169,6 +177,8 @@ export default function NotesHomepage() {
       router.push("/login");
       return;
     }
+
+    setIsSaving(true);
 
     try {
       const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
@@ -178,7 +188,7 @@ export default function NotesHomepage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...selectedNote,
+          title: updatedTitle,
           content: updatedContent,
         }),
       });
@@ -188,10 +198,21 @@ export default function NotesHomepage() {
       }
 
       const updatedNote = await response.json();
+      // Atualizar a nota selecionada
       setSelectedNote(updatedNote);
-      setNotes(notes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
+      setUpdateSuccess(true);
+      setNoteUpdated(true); // Set this to true when update is successful
+      setTimeout(() => setUpdateSuccess(false), 2000); // Remove o feedback após 2 segundos
+
+      // Atualizar a lista de notas
+      setNotes((prevNotes) => prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note)));
+
+      // Adicionar feedback visual de sucesso
+      console.log("Note updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while updating the note");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -253,6 +274,55 @@ export default function NotesHomepage() {
     });
   };
 
+  const handleContentChange = (updatedContent: string) => {
+    if (!selectedNote) return;
+
+    // Atualizar o conteúdo da nota no estado
+    setSelectedNote({ ...selectedNote, content: updatedContent });
+
+    // Limpar o timeout anterior, se existir
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Configurar um novo timeout para salvar após 1 segundo
+    debounceTimeout.current = setTimeout(() => {
+      updateNote(updatedContent); // Chamar a função de salvamento
+    }, 1000); // 1000ms = 1 segundo
+  };
+
+  // Add the useEffect to handle the update
+  useEffect(() => {
+    if (noteUpdated) {
+      const fetchNotes = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        try {
+          const response = await fetch("http://localhost:5000/api/notes", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch notes");
+          }
+
+          const data = await response.json();
+          const notesArray = Array.isArray(data) ? data : [];
+          setNotes(notesArray);
+        } catch (err) {
+          console.error("Failed to refresh notes:", err);
+        } finally {
+          setNoteUpdated(false); // Reset the flag
+        }
+      };
+
+      fetchNotes();
+    }
+  }, [noteUpdated]);
+
   const filteredNotes = searchQuery
     ? notes.filter(
         (note) => note.title.toLowerCase().includes(searchQuery.toLowerCase()) || note.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -274,7 +344,9 @@ export default function NotesHomepage() {
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-center p-2">
             {/* Replace with your actual logo */}
-            <div className="text-white font-bold text-xl p-2 rounded">Notes App</div>
+            <div className="flex items-center gap-2">
+              <img src="/logo_dark.svg" alt="Notes App Logo" className="h-15 w-30" />
+            </div>
           </div>
         </div>
 
@@ -330,7 +402,7 @@ export default function NotesHomepage() {
                   activeView === "settings"
                     ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                } flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none`}
+                } flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none cursor-pointer`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -363,7 +435,7 @@ export default function NotesHomepage() {
                   {!Array.isArray(filteredNotes) || filteredNotes.length === 0 ? (
                     <div className="p-6 text-center text-gray-500 dark:text-gray-400">No notes found</div>
                   ) : (
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700 hello">
                       {filteredNotes.map((note) => (
                         <li
                           key={note._id}
@@ -395,7 +467,10 @@ export default function NotesHomepage() {
                         placeholder="Note title"
                         autoFocus
                       />
-                      <button onClick={saveNewNote} className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                      <button
+                        onClick={saveNewNote}
+                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
                         Save
                       </button>
                     </div>
@@ -443,12 +518,16 @@ export default function NotesHomepage() {
                   </div>
                 ) : selectedNote ? (
                   <div className="flex flex-col h-full">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                       <input
                         type="text"
-                        value={selectedNote.title}
+                        value={selectedNote?.title || ""}
                         onChange={(e) => {
-                          setSelectedNote({ ...selectedNote, title: e.target.value });
+                          const updatedTitle = e.target.value;
+                          setSelectedNote((prev) => ({
+                            ...prev!,
+                            title: updatedTitle,
+                          }));
                         }}
                         className="w-full text-xl font-medium text-gray-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Note title"
@@ -456,14 +535,30 @@ export default function NotesHomepage() {
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto">
                       <textarea
-                        value={selectedNote.content}
+                        value={selectedNote?.content || ""}
                         onChange={(e) => {
-                          setSelectedNote({ ...selectedNote, content: e.target.value });
-                          updateNote(e.target.value);
+                          const updatedContent = e.target.value;
+                          setSelectedNote((prev) => ({
+                            ...prev!,
+                            content: updatedContent,
+                          }));
                         }}
                         className="w-full h-full text-gray-700 dark:text-gray-300 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
                         placeholder="Start writing..."
-                      ></textarea>
+                      />
+                    </div>
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+                      <button
+                        onClick={() => {
+                          if (selectedNote) {
+                            updateNote(selectedNote.title, selectedNote.content);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        Update
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -472,14 +567,17 @@ export default function NotesHomepage() {
                   </div>
                 )}
               </div>
-
+              {isSaving && <div className="text-sm text-gray-500 dark:text-gray-400">Saving...</div>}
+              {updateSuccess && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg">Note updated successfully!</div>
+              )}
               {/* Right sidebar - Actions */}
               <div className="w-16 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-6">
                 {selectedNote && (
                   <>
                     <button
                       onClick={archiveNote}
-                      className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4"
+                      className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none mb-4 cursor-pointer"
                       title="Archive Note"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
