@@ -959,7 +959,7 @@ export default function NotesHomepage() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                         Once you delete your account, there is no going back. Please be certain.
                       </p>
-                      <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                      <button className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 cursor-pointer">
                         Delete Account
                       </button>
                     </div>
@@ -977,7 +977,7 @@ export default function NotesHomepage() {
 
                   <button
                     onClick={handleLogout}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 cursor-pointer"
                   >
                     Logout
                   </button>
