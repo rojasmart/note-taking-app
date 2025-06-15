@@ -479,7 +479,7 @@ export default function NotesHomepage() {
           <div className="mb-4">
             <button
               onClick={() => setActiveTag(null)}
-              className={`text-sm px-3 py-1 mb-2 rounded-full ${
+              className={`text-sm px-3 py-1 mb-2 rounded-full cursor-pointer ${
                 !activeTag
                   ? "bg-blue-600 text-white"
                   : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -542,7 +542,7 @@ export default function NotesHomepage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowArchived(!showArchived)}
-                className={`flex items-center px-3 py-2 rounded-md ${
+                className={`flex items-center px-3 py-2 rounded-md cursor-pointer ${
                   showArchived
                     ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
                     : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
