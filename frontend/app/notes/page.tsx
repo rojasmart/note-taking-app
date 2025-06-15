@@ -746,7 +746,7 @@ export default function NotesHomepage() {
                         />
                         <button
                           onClick={handleAddTagToExistingNote}
-                          className="px-2 py-1 bg-blue-600 text-white text-sm rounded-r-md hover:bg-blue-700"
+                          className="px-2 py-1 bg-blue-600 text-white text-sm rounded-r-md hover:bg-blue-700 cursor-pointer"
                           title="Add tag"
                         >
                           +
