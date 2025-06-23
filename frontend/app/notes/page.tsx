@@ -50,7 +50,7 @@ export default function NotesHomepage() {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/notes?archived=${showArchived}`, {
+        const response = await fetch(`https://note-taking-app-gkmf.onrender.com/api/notes?archived=${showArchived}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -108,7 +108,7 @@ export default function NotesHomepage() {
 
     try {
       // URL completa para debugging
-      const url = "http://localhost:5000/api/notes";
+      const url = "https://note-taking-app-gkmf.onrender.com/api/notes";
       console.log("Creating new note with request to:", url);
 
       // Dados sendo enviados
@@ -180,7 +180,7 @@ export default function NotesHomepage() {
     setIsSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
+      const response = await fetch(`https://note-taking-app-gkmf.onrender.com/api/notes/${selectedNote._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -228,7 +228,7 @@ export default function NotesHomepage() {
     setIsSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
+      const response = await fetch(`https://note-taking-app-gkmf.onrender.com/api/notes/${selectedNote._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -275,7 +275,7 @@ export default function NotesHomepage() {
     if (!confirm("Are you sure you want to delete this note?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}`, {
+      const response = await fetch(`https://note-taking-app-gkmf.onrender.com/api/notes/${selectedNote._id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -304,7 +304,7 @@ export default function NotesHomepage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/notes/${selectedNote._id}/archive`, {
+      const response = await fetch(`https://note-taking-app-gkmf.onrender.com/api/notes/${selectedNote._id}/archive`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -408,7 +408,7 @@ export default function NotesHomepage() {
         if (!token) return;
 
         try {
-          const response = await fetch("http://localhost:5000/api/notes", {
+          const response = await fetch("https://note-taking-app-gkmf.onrender.com/api/notes", {
             headers: {
               Authorization: `Bearer ${token}`,
             },

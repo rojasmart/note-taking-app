@@ -13,7 +13,7 @@ const app = express();
 // Configurar e ativar o CORS - adicione isso antes de outras middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000", // Substitua pela URL do seu frontend
+    origin: "https://note-taking-app-gkmf.onrender.com/", // Substitua pela URL do seu frontend
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
