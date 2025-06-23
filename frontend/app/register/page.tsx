@@ -50,7 +50,8 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <img src="/logo_dark.svg" alt="Notes App Logo" className="h-15 w-30 mb-6" />
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-center mb-6">Create an Account</h1>
 
         {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
