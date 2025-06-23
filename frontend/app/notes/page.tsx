@@ -970,7 +970,7 @@ export default function NotesHomepage() {
                 <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
                   <button
                     onClick={() => setActiveView("notes")}
-                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                   >
                     Back to Notes
                   </button>
